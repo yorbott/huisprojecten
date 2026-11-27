@@ -98,6 +98,8 @@ export interface Derived {
   /** aantal projecten dat open gaat zodra dit project klaar is */
   unlocks: Record<string, string[]>;
   route: Set<string>; // nog-niet-klare projecten op weg naar het doel (incl. doel)
+  /** alle stappen naar het doel (ook klare), op volgorde; doel als laatste */
+  routeSteps: string[];
   routeCost: Range | undefined;
   points: number;
   level: LevelInfo;
@@ -241,11 +243,25 @@ export function derive(data: AppData): Derived {
       for (const d of validDeps(projects[cur], projects)) stack.push(d.id);
     }
   }
+  const routeAll = new Set<string>();
+  if (goal) {
+    const stack = [goal];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      if (routeAll.has(cur)) continue;
+      routeAll.add(cur);
+      for (const d of validDeps(projects[cur], projects)) stack.push(d.id);
+    }
+  }
+  const routeSteps = [...routeAll].sort((a, b) =>
+    (a === goal ? 1 : 0) - (b === goal ? 1 : 0) ||
+    Number(projects[b].status === 'klaar') - Number(projects[a].status === 'klaar') ||
+    depth[a] - depth[b] || projects[a].title.localeCompare(projects[b].title, 'nl'));
   const routeCost = sumRanges([...route].map((i) => estimate(projects[i])));
 
   const points = ids.filter((i) => projects[i].status === 'klaar').reduce((s, i) => s + pointsFor(projects[i]), 0);
 
-  return { state, depth, trajectOf, trajecten, losse, dependents, unlocks, route, routeCost, points, level: levelFor(points) };
+  return { state, depth, trajectOf, trajecten, losse, dependents, unlocks, route, routeSteps, routeCost, points, level: levelFor(points) };
 }
 
 /** Sortering voor "Beste keuze eerst" op het Nu-scherm. */
