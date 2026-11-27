@@ -197,8 +197,11 @@ export function completeProject(id: string): CompletionResult {
   return { points: pointsFor(p), unlocked, levelBefore: before.level.level, levelAfter: after.level.level };
 }
 
+/** Zet een afgerond project terug. Was je er al mee bezig, dan wordt het weer Bezig. */
 export function reopenProject(id: string) {
-  updateProject(id, { status: 'open', completedAt: undefined });
+  const p = data.projects[id];
+  if (!p) return;
+  updateProject(id, { status: p.startedAt || p.steps.some((s) => s.done) ? 'bezig' : 'open', completedAt: undefined });
 }
 
 export function dismissUnlock() {
