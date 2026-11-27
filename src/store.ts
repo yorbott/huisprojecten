@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { derive, pointsFor, stateOf, wouldCreateCycle } from './logic';
-import type { AppData, Dep, Project, Quote, Step } from './types';
+import type { AppData, Dep, Idea, Project, Quote, Step } from './types';
 
 export const DEFAULT_ROOMS = ['Badkamer', 'Keuken', 'Woonkamer', 'Slaapkamer', 'Zolder', 'Gang en trap', 'Tuin', 'Heel het huis'];
 
@@ -9,7 +9,7 @@ const STORE = 'kv';
 const KEY = 'data';
 
 export function emptyData(): AppData {
-  return { version: 1, projects: {}, rooms: [] };
+  return { version: 1, projects: {}, rooms: [], ideas: [] };
 }
 
 let data: AppData = emptyData();
@@ -84,7 +84,7 @@ function normalize(d: AppData): AppData {
   for (const [id, p] of Object.entries(d.projects ?? {})) {
     projects[id] = { ...p, deps: p.deps ?? [], quotes: p.quotes ?? [], steps: p.steps ?? [], notes: p.notes ?? '' };
   }
-  return { version: 1, projects, goalId: d.goalId, rooms: d.rooms ?? [], lastUnlock: d.lastUnlock };
+  return { version: 1, projects, goalId: d.goalId, rooms: d.rooms ?? [], lastUnlock: d.lastUnlock, ideas: d.ideas ?? [] };
 }
 
 function emit() {
@@ -239,6 +239,17 @@ export function addQuote(id: string, party: string, amount: number) {
 export function removeQuote(id: string, quoteId: string) {
   const p = data.projects[id];
   updateProject(id, { quotes: p.quotes.filter((q) => q.id !== quoteId) });
+}
+
+/* ---------- Ideeën ---------- */
+
+export function addIdea(text: string) {
+  const idea: Idea = { id: uid(), text, createdAt: Date.now() };
+  commit({ ...data, ideas: [idea, ...data.ideas] });
+}
+
+export function removeIdea(id: string) {
+  commit({ ...data, ideas: data.ideas.filter((i) => i.id !== id) });
 }
 
 /* ---------- Back-up ---------- */
