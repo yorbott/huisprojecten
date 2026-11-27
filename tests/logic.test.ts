@@ -1,0 +1,11 @@
+import { derive, levelFor, pointsFor, wouldCreateCycle, formatRange, levelThreshold } from '../src/logic';
+import { sampleData } from '../src/sample';
+const d = sampleData(); const r = derive(d);
+const t = (n:string)=>r.trajecten.map(x=>`${x.name}: stap ${x.currentStep}/${x.steps} [${x.ids.map(i=>d.projects[i].title+'('+r.depth[i]+','+r.state[i]+')').join(', ')}] rest ${formatRange(x.remaining)}`);
+console.log(t('').join('\n'));
+console.log('losse', r.losse.map(i=>d.projects[i].title));
+console.log('route', [...r.route].map(i=>d.projects[i].title), formatRange(r.routeCost));
+console.log('unlocks tegels', r.unlocks['s-tegels'].map(i=>d.projects[i].title));
+console.log('points', r.points, r.level);
+console.log('cycle douche->tegels?', wouldCreateCycle(d.projects,'s-leiding','s-douche'), wouldCreateCycle(d.projects,'s-douche','s-glas'));
+console.log([1,2,3,4,5,6,8,10].map(n=>n+':'+levelThreshold(n)).join(' '), pointsFor({effort:'L',impact:5}), pointsFor({effort:'L',impact:4}));
