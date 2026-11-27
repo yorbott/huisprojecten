@@ -49,12 +49,19 @@ export interface UnlockNotice {
   at: number;
 }
 
+export interface Idea {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
 export interface AppData {
   version: 1;
   projects: Record<string, Project>;
   goalId?: string;
   rooms: string[];
   lastUnlock?: UnlockNotice;
+  ideas: Idea[];
 }
 
 export type ProjectState = 'klaar' | 'bezig' | 'beschikbaar' | 'op_slot';
