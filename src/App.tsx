@@ -55,7 +55,9 @@ export function App() {
       {tab === 'ruimtes' && <RuimtesScreen nav={nav} />}
       {tab === 'ideeen' && <IdeeenScreen />}
 
-      {top && <DetailScreen key={`${top}-${stack.length}`} id={top} nav={nav} onBack={() => setStack((s) => s.slice(0, -1))} />}
+      {stack.map((id, i) => (
+        <DetailScreen key={`${i}-${id}`} id={id} nav={nav} depth={i} onBack={() => setStack((s) => s.slice(0, i))} />
+      ))}
 
       {!top && (
         <nav className="tabbar" aria-label="Hoofdmenu">
