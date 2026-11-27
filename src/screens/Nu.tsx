@@ -83,7 +83,7 @@ export function NuScreen({ nav }: { nav: Nav }) {
             <div className="banner">
               <span className="round"><Icon name="unlock" size={16} stroke={2.2} /></span>
               <button className="row-main" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', color: 'inherit', cursor: 'pointer' }} onClick={() => nav.openProject(unlockTitles[0].id)}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>Nieuw beschikbaar</span>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>Kan nu: nieuw vrijgekomen</span>
                 <span style={{ fontSize: 13 }}>{unlockTitles.map((p) => p.title).join(' en ')}</span>
               </button>
               <button className="del-btn" aria-label="Melding sluiten" onClick={dismissUnlock} style={{ color: 'inherit' }}><Icon name="close" size={16} /></button>
@@ -92,7 +92,7 @@ export function NuScreen({ nav }: { nav: Nav }) {
 
           {busy.length > 0 && (
             <div className="section">
-              <div className="section-head"><span className="section-label">Mee bezig</span></div>
+              <div className="section-head"><span className="section-label">Bezig</span></div>
               <div className="stack" style={{ gap: 10 }}>
                 {busy.map((p) => {
                   const done = p.steps.filter((s) => s.done).length;
@@ -117,16 +117,17 @@ export function NuScreen({ nav }: { nav: Nav }) {
 
           <div className="section">
             <div className="section-head">
-              <span className="section-label">{busy.length ? 'Hierna' : 'Pak dit op'}</span>
+              <span className="section-label">Kan nu</span>
+              {available.length > 0 && <span className="section-meta">beste keuze eerst</span>}
             </div>
             {available.length === 0 ? (
-              <div className="card pad row-sub" style={{ fontSize: 14 }}>Niets beschikbaar. Rond eerst een lopend project af, of voeg iets nieuws toe.</div>
+              <div className="card pad row-sub" style={{ fontSize: 14 }}>Er kan nu niets. Rond eerst een lopend project af, of voeg iets nieuws toe.</div>
             ) : (
               <div className="stack" style={{ gap: 10 }}>
                 {top.map((p) => <ProjectCard key={p.id} p={p} d={d} nav={nav} nextOnRoute={p.id === nextRouteId} />)}
                 {available.length > 3 && (
                   <button className="link-btn" style={{ fontSize: 15, padding: '4px 4px' , textAlign: 'left' }} onClick={() => setShowAll(!showAll)}>
-                    {showAll ? 'Toon minder' : `Toon alle ${available.length} beschikbare projecten`}
+                    {showAll ? 'Toon minder' : `Toon alle ${available.length}`}
                   </button>
                 )}
               </div>
