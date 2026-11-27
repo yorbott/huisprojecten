@@ -1,28 +1,29 @@
 import { useState } from 'react';
-import { estimate, formatRange, type Derived } from '../logic';
+import { estimate, formatRange, type Derived, type Traject } from '../logic';
 import { useData, useDerived } from '../store';
 import type { AppData } from '../types';
 import { Icon, STATE_LABEL, StateNode } from '../ui';
 import type { Nav } from '../App';
 
-function subFor(id: string, data: AppData, d: Derived): string {
+/** Eén korte regel onder een project, met de vaste woorden Kan nu · Bezig · Wacht · Klaar. */
+export function subFor(id: string, data: AppData, d: Derived): string {
   const p = data.projects[id];
   const s = d.state[id];
   if (s === 'klaar') return ['Klaar', p.actualCost != null ? formatRange({ min: p.actualCost, max: p.actualCost }) : ''].filter(Boolean).join(' · ');
   if (s === 'op_slot') {
     const waiting = p.deps.filter((x) => x.kind === 'hard' && data.projects[x.id] && data.projects[x.id].status !== 'klaar');
-    return `Wacht op ${waiting.map((x) => data.projects[x.id].title).join(', ')}`;
+    return `Wacht op ${waiting.map((x) => data.projects[x.id].title).join(' en ')}`;
   }
   if (s === 'bezig') {
     const done = p.steps.filter((x) => x.done).length;
     return p.steps.length ? `Bezig · ${done} van ${p.steps.length} stappen` : 'Bezig';
   }
   const softOpen = p.deps.filter((x) => x.kind === 'soft' && data.projects[x.id] && data.projects[x.id].status !== 'klaar');
-  if (softOpen.length) return `Beschikbaar · liever na ${softOpen.map((x) => data.projects[x.id].title).join(', ')}`;
+  if (softOpen.length) return `Kan nu · liefst na ${softOpen.map((x) => data.projects[x.id].title).join(' en ')}`;
   return [STATE_LABEL[s], formatRange(estimate(p))].filter(Boolean).join(' · ');
 }
 
-function Row({ id, nav }: { id: string; nav: Nav }) {
+export function Row({ id, nav }: { id: string; nav: Nav }) {
   const data = useData();
   const d = useDerived();
   const p = data.projects[id];
@@ -79,7 +80,7 @@ function RouteCard({ nav }: { nav: Nav }) {
                 <span className="row-main">
                   <span className="tl-title">{data.projects[id].title}</span>
                   <span className="row-sub">
-                    {st === 'klaar' ? 'Klaar' : isNext ? (st === 'bezig' ? 'Hier ben je nu mee bezig' : 'Dit is je volgende stap') : isGoal ? 'Je doel' : st === 'op_slot' ? 'Daarna' : 'Kan ook al'}
+                    {isNext ? (st === 'bezig' ? 'Bezig · hier ben je nu' : 'Kan nu · je volgende stap') : isGoal && st !== 'klaar' ? `${STATE_LABEL[st]} · je doel` : STATE_LABEL[st]}
                   </span>
                 </span>
                 {isNext && <span className="tl-badge">Volgende</span>}
@@ -92,55 +93,78 @@ function RouteCard({ nav }: { nav: Nav }) {
   );
 }
 
-function Trajecten({ nav }: { nav: Nav }) {
+/** Compacte kaart per traject; tik om de projecten te zien. */
+function TrajectCard({ t, nav }: { t: Traject; nav: Nav }) {
   const data = useData();
   const d = useDerived();
-  const [losseOpen, setLosseOpen] = useState(false);
-  const losseOpenCount = d.losse.filter((i) => data.projects[i].status !== 'klaar').length;
-
+  const [open, setOpen] = useState(false);
+  const [showDone, setShowDone] = useState(false);
+  const complete = t.done === t.ids.length;
+  const next = t.ids.find((i) => d.state[i] === 'bezig') ?? t.ids.find((i) => d.state[i] === 'beschikbaar');
+  const shown = showDone ? t.ids : t.ids.filter((i) => data.projects[i].status !== 'klaar');
   return (
-    <div className="stack" style={{ gap: 12 }}>
-      <RouteCard nav={nav} />
-
-      {d.losse.length > 0 && (
-        <div className="section">
-          <button className="card pad tappable" style={{ border: 0, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', fontSize: 'inherit', padding: '12px 14px' }} onClick={() => setLosseOpen(!losseOpen)} aria-expanded={losseOpen}>
-            <span style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--fill)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-2)' }}><Icon name="list" size={14} stroke={2.4} /></span>
-            <span className="row-main">
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Losse klussen</span>
-              <span className="row-sub" style={{ fontSize: 13 }}>{losseOpenCount} open · {d.losse.length - losseOpenCount} klaar</span>
-            </span>
-            <span className={`collapse-btn${losseOpen ? ' open' : ''}`}><Icon name="chevronDown" size={16} stroke={2.5} /></span>
-          </button>
-          {losseOpen && (
-            <div className="list fade-in">
-              {d.losse.map((id) => <Row key={id} id={id} nav={nav} />)}
-            </div>
+    <div className="card traject-card">
+      <button className="traject-head tappable" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="row-main" style={{ gap: 6 }}>
+          <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{t.name}</span>
+            <span className="row-sub" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{complete ? 'Klaar' : `stap ${t.currentStep} van ${t.steps}`}</span>
+          </span>
+          <span className="progress"><span style={{ display: 'block', height: '100%', borderRadius: 3, background: complete ? 'var(--green)' : 'var(--accent)', width: `${(t.done / t.ids.length) * 100}%` }} /></span>
+          <span className="row-sub" style={{ fontSize: 13 }}>
+            {complete ? `${t.ids.length} projecten afgerond` : [next ? `Kan nu: ${data.projects[next].title}` : 'Wacht op een ander project', t.remaining ? formatRange(t.remaining) : ''].filter(Boolean).join(' · ')}
+          </span>
+        </span>
+        <span className={`collapse-btn${open ? ' open' : ''}`}><Icon name="chevronDown" size={16} stroke={2.5} /></span>
+      </button>
+      {open && (
+        <div className="traject-body fade-in">
+          {shown.map((id) => <Row key={id} id={id} nav={nav} />)}
+          {t.done > 0 && !complete && (
+            <button className="link-btn" style={{ fontSize: 14, padding: '10px 0' }} onClick={() => setShowDone(!showDone)}>
+              {showDone ? 'Verberg klare projecten' : `Toon ${t.done} klare ${t.done === 1 ? 'project' : 'projecten'}`}
+            </button>
           )}
         </div>
       )}
+    </div>
+  );
+}
 
-      {d.trajecten.map((t) => {
-        const complete = t.done === t.ids.length;
-        return (
-          <div className="section" key={t.id}>
-            <div className="section-head">
-              <span className="section-label" style={{ color: complete ? 'var(--green-text)' : 'var(--accent-text)' }}>{t.name}</span>
-              <span className="section-meta">
-                {complete ? 'Afgerond' : `Stap ${t.currentStep} van ${t.steps}${t.remaining ? ` · ${formatRange(t.remaining)}` : ''}`}
-              </span>
-            </div>
-            <div className="list">
-              {t.ids.map((id) => <Row key={id} id={id} nav={nav} />)}
-            </div>
-          </div>
-        );
-      })}
+function LosseKlussen({ nav }: { nav: Nav }) {
+  const data = useData();
+  const d = useDerived();
+  const [open, setOpen] = useState(false);
+  const openIds = d.losse.filter((i) => data.projects[i].status !== 'klaar');
+  const done = d.losse.length - openIds.length;
+  return (
+    <div className="card traject-card">
+      <button className="traject-head tappable" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="row-main" style={{ gap: 2 }}>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>Losse klussen</span>
+          <span className="row-sub" style={{ fontSize: 13 }}>{openIds.length} te doen{done ? ` · ${done} klaar` : ''} · wachten nergens op</span>
+        </span>
+        <span className={`collapse-btn${open ? ' open' : ''}`}><Icon name="chevronDown" size={16} stroke={2.5} /></span>
+      </button>
+      {open && <div className="traject-body fade-in">{d.losse.map((id) => <Row key={id} id={id} nav={nav} />)}</div>}
+    </div>
+  );
+}
 
+function Trajecten({ nav }: { nav: Nav }) {
+  const d = useDerived();
+  return (
+    <div className="stack" style={{ gap: 12 }}>
+      <RouteCard nav={nav} />
+      {(d.trajecten.length > 0 || d.losse.length > 0) && (
+        <div className="section-head" style={{ paddingTop: 10 }}><span className="section-label">Alle projecten</span></div>
+      )}
+      {d.trajecten.map((t) => <TrajectCard key={t.id} t={t} nav={nav} />)}
+      {d.losse.length > 0 && <LosseKlussen nav={nav} />}
       {d.trajecten.length === 0 && (
-        <div className="card pad row-sub" style={{ fontSize: 14, lineHeight: 1.4 }}>
-          Nog geen trajecten. Zodra je bij een project aangeeft waar het op wacht, verschijnt hier vanzelf een traject.
-        </div>
+        <p className="row-sub" style={{ fontSize: 13, lineHeight: 1.4, padding: '0 4px', margin: 0 }}>
+          Geef bij een project aan waar het op wacht, dan ontstaat hier vanzelf een traject.
+        </p>
       )}
     </div>
   );
@@ -210,9 +234,9 @@ function Matrix({ nav }: { nav: Nav }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-2)', padding: '0 4px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)' }} />Beschikbaar</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, border: '2px solid var(--text-3)' }} />Op slot</span>
-        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => setOnlyOpen(!onlyOpen)}>{onlyOpen ? 'Toon alles' : 'Alleen beschikbaar'}</button>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)' }} />Kan nu</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, border: '2px solid var(--text-3)' }} />Wacht</span>
+        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => setOnlyOpen(!onlyOpen)}>{onlyOpen ? 'Toon alles' : 'Alleen wat nu kan'}</button>
       </div>
       {QUADRANTS.map((q) => {
         const ids = items.filter((p) => quadrantOf(p.effort ?? 'M', p.impact ?? 3) === q.key).map((p) => p.id);
@@ -268,14 +292,18 @@ export function RuimtesScreen({ nav }: { nav: Nav }) {
     groups.set(r, [...(groups.get(r) ?? []), p.id]);
   }
   const rooms = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'nl'));
+  const order = ['bezig', 'beschikbaar', 'op_slot', 'klaar'];
   return (
     <div className="screen fade-in">
-      <div className="navbar"><span /></div>
+      <div className="navbar">
+        <span />
+        <button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>
+      </div>
       <h1 className="large-title">Ruimtes</h1>
       <div className="stack" style={{ marginTop: 14 }}>
         {rooms.length === 0 && <div className="empty"><p>Nog geen projecten.</p></div>}
         {rooms.map((r) => {
-          const ids = groups.get(r)!.sort((a, b) => ['bezig', 'beschikbaar', 'op_slot', 'klaar'].indexOf(d.state[a]) - ['bezig', 'beschikbaar', 'op_slot', 'klaar'].indexOf(d.state[b]));
+          const ids = groups.get(r)!.sort((a, b) => order.indexOf(d.state[a]) - order.indexOf(d.state[b]));
           const done = ids.filter((i) => data.projects[i].status === 'klaar').length;
           return (
             <div className="section" key={r}>
@@ -287,21 +315,6 @@ export function RuimtesScreen({ nav }: { nav: Nav }) {
             </div>
           );
         })}
-        <p className="row-sub" style={{ textAlign: 'center', fontSize: 12 }}>Het tegeloverzicht met foto's komt in de volgende versie.</p>
-      </div>
-    </div>
-  );
-}
-
-export function IdeeenScreen() {
-  return (
-    <div className="screen fade-in">
-      <div className="navbar"><span /></div>
-      <h1 className="large-title">Ideeën</h1>
-      <div className="empty">
-        <span style={{ color: 'var(--accent)' }}><Icon name="bulb" size={40} stroke={1.6} /></span>
-        <h2>Komt in de volgende versie</h2>
-        <p>Hier kun je straks snel een inval vastleggen met een foto of link, en die later met één veeg omzetten in een project.</p>
       </div>
     </div>
   );
