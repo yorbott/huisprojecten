@@ -1,9 +1,71 @@
-import { useRef, useState } from 'react';
-import { EFFORT_POINTS, estimate, formatEuro, formatRange, levelThreshold, pointsFor } from '../logic';
-import { emptyData, exportJson, importJson, replaceAll, updateProject, useData, useDerived, type CompletionResult } from '../store';
+import { useEffect, useRef, useState } from 'react';
+import { EFFORT_POINTS, estimate, formatEuro, formatRange, levelFor, levelThreshold, pointsFor, type LevelInfo } from '../logic';
+import { emptyData, exportJson, importJson, reopenProject, replaceAll, updateProject, useData, useDerived, type CompletionResult } from '../store';
 import { sampleData } from '../sample';
 import { EFFORT_HINT, formatDate, Icon, parseEuro, Sheet, toast } from '../ui';
 import type { Nav } from '../App';
+
+const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+/** Punten tellen op, de balk loopt vol en bij een nieuw level springt de badge. */
+function PointsCelebration({ points, before, after }: { points: number; before: LevelInfo; after: LevelInfo }) {
+  const levelUp = after.level > before.level;
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now() + 450; // eerst het vinkje laten landen
+    const dur = levelUp ? 1600 : 1100;
+    const tick = (now: number) => {
+      const v = Math.min(1, Math.max(0, (now - start) / dur));
+      setT(v);
+      if (v < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const e = ease(t);
+  const shown = Math.round(points * e);
+  let width: number;
+  let level: number;
+  if (levelUp) {
+    // eerst vol tot het oude level af is, dan opnieuw vullen in het nieuwe level
+    if (t < 0.55) { width = before.progress + (1 - before.progress) * ease(t / 0.55); level = before.level; }
+    else { width = after.progress * ease((t - 0.55) / 0.45); level = after.level; }
+  } else {
+    width = before.progress + (after.progress - before.progress) * e;
+    level = after.level;
+  }
+  const done = t >= 1;
+  const bumped = levelUp && t >= 0.55;
+
+  return (
+    <div className="points-card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className={`level-badge sm${bumped ? ' bump' : ''}`} key={level}><small>HUIS</small><b>{level}</b></div>
+        <div className="row-main" style={{ gap: 2 }}>
+          <span className={`big${done ? ' landed' : ''}`}>+{shown} punten</span>
+          <span style={{ fontSize: 13 }}>
+            {bumped ? `Huislevel ${after.level} bereikt!` : done ? `Huislevel ${after.level} · nog ${after.toNext} punten tot level ${after.level + 1}` : `Huislevel ${level}`}
+          </span>
+        </div>
+      </div>
+      <div className="progress xp" style={{ background: 'color-mix(in srgb, var(--orange) 20%, transparent)' }}>
+        <div style={{ width: `${Math.max(3, width * 100)}%`, transition: 'none' }} />
+      </div>
+      {done && (
+        <div className="confetti" aria-hidden="true">
+          {Array.from({ length: levelUp ? 36 : 18 }, (_, i) => {
+            const angle = (i / (levelUp ? 36 : 18)) * Math.PI * 2;
+            const dist = 70 + ((i * 37) % 60);
+            const colors = ['#ffb547', '#f07a1a', '#0a5fc9', '#1e8e3e', '#8e44ad'];
+            return <span key={i} style={{ ['--dx' as string]: `${Math.cos(angle) * dist}px`, ['--dy' as string]: `${Math.sin(angle) * dist - 30}px`, ['--r' as string]: `${(i * 47) % 360}deg`, background: colors[i % colors.length], animationDelay: `${(i % 6) * 15}ms` }} />;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CompletionSheet({ id, result, nav, onClose }: { id: string; result: CompletionResult; nav: Nav; onClose: () => void }) {
   const data = useData();
@@ -14,7 +76,6 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
   const est = estimate(p);
   const traject = d.trajecten.find((t) => t.id === d.trajectOf[id]);
   const after = d.level;
-  const levelUp = result.levelAfter > result.levelBefore;
   const parsed = parseEuro(cost);
 
   const finish = (close: () => void) => {
@@ -29,23 +90,10 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
           <div className="celebrate">
             <div className="big-check"><Icon name="check" size={38} stroke={3} /></div>
             <h1 style={{ margin: '4px 0 0', fontSize: 26, fontWeight: 700, letterSpacing: -0.3 }}>{p.title} is klaar</h1>
-            {traject && <span className="row-sub" style={{ fontSize: 15 }}>{traject.name} · stap {d.depth[id]} van {traject.steps} gedaan</span>}
+            {traject && <span className="row-sub" style={{ fontSize: 15 }}>{traject.name} · stap {d.depth[id]} van {traject.steps} afgerond</span>}
           </div>
 
-          <div className="points-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span className="big">+{result.points} punten</span>
-              <span style={{ fontSize: 13 }}>Moeite {p.effort ?? 'M'} · impact {p.impact ?? 3}/5</span>
-            </div>
-            <div className="progress xp" style={{ background: 'color-mix(in srgb, var(--orange) 20%, transparent)' }}>
-              <div style={{ width: `${Math.max(3, after.progress * 100)}%` }} />
-            </div>
-            {levelUp ? (
-              <span className="level-up">Huislevel {after.level} bereikt!</span>
-            ) : (
-              <span style={{ fontSize: 13 }}>Huislevel {after.level} · nog {after.toNext} punten tot level {after.level + 1}</span>
-            )}
-          </div>
+          <PointsCelebration points={result.points} before={levelFor(after.points - result.points)} after={after} />
 
           <div className="section">
             <div className="section-head"><span className="section-label">Wat heeft het gekost?</span></div>
@@ -62,7 +110,7 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
 
           {result.unlocked.length > 0 && (
             <div className="section">
-              <div className="section-head"><span className="section-label">Kan nu</span></div>
+              <div className="section-head"><span className="section-label">Je kunt nu beginnen aan</span></div>
               <div className="list" style={{ background: 'var(--card-2)' }}>
                 {result.unlocked.map((u) => {
                   const up = data.projects[u];
@@ -83,6 +131,7 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
           )}
 
           <button className="btn primary" onClick={() => finish(close)}>Klaar</button>
+          <button className="link-btn" style={{ fontSize: 15, padding: '4px 0 10px' }} onClick={() => { reopenProject(id); close(); }}>Toch nog niet klaar</button>
         </div>
       )}
     </Sheet>
