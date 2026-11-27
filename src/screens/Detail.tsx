@@ -64,6 +64,18 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
     touch.current = null;
   };
 
+  // Stappen sturen het project: eerste vinkje = gestart, alle vinkjes = klaar, vinkje weg bij een klaar project = weer bezig.
+  const onToggleStep = (stepId: string) => {
+    const step = p.steps.find((x) => x.id === stepId);
+    if (!step) return;
+    const checking = !step.done;
+    toggleStep(id, stepId);
+    if (checking && state === 'beschikbaar') startProject(id);
+    if (!checking && state === 'klaar') { reopenProject(id); toast('Project staat weer op Bezig'); }
+    const allDone = p.steps.every((x) => (x.id === stepId ? checking : x.done));
+    if (checking && allDone && state !== 'klaar' && state !== 'op_slot') window.setTimeout(() => nav.complete(id), 450);
+  };
+
   const depRow = (depId: string, sub: string, dashed?: boolean) => (
     <button key={depId} className="row tappable" onClick={() => nav.openProject(depId)}>
       {dashed ? <span className="node" style={{ border: '2px dashed var(--text-3)' }} /> : <StateNode state={d.state[depId]} />}
@@ -102,13 +114,16 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
         {state === 'bezig' && <button className="btn green" onClick={() => nav.complete(id)}><Icon name="check" size={20} stroke={2.8} />Afronden</button>}
         {state === 'op_slot' && (
           <div className="card status-card wait">
-            <div className="status-title"><Icon name="lock" size={16} stroke={2.4} />Kan pas als dit klaar is</div>
+            <div className="status-title"><Icon name="lock" size={16} stroke={2.4} />Kan pas beginnen als dit klaar is</div>
             <div>{blockers.map((x) => depRow(x.id, STATE_LABEL[d.state[x.id]]))}</div>
           </div>
         )}
         {state === 'klaar' && (
           <div className="card status-card done">
-            <div className="status-title"><Icon name="check" size={16} stroke={3} />Klaar{p.completedAt ? ` op ${formatDate(p.completedAt)}` : ''}</div>
+            <div className="status-title" style={{ justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={16} stroke={3} />Klaar{p.completedAt ? ` op ${formatDate(p.completedAt)}` : ''}</span>
+              <button className="link-btn" style={{ fontSize: 14, fontWeight: 600 }} onClick={() => { reopenProject(id); toast('Project staat weer open'); }}>Niet klaar</button>
+            </div>
           </div>
         )}
 
@@ -127,7 +142,7 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
             ))}
             {addingQuote ? (
               <div className="stack fade-in" style={{ gap: 8, padding: '10px 0' }}>
-                <input className="search" placeholder="Van wie? (bijv. tegelzetter)" value={qParty} onChange={(e) => setQParty(e.target.value)} autoFocus />
+                <input className="search" placeholder="Van wie? Bijvoorbeeld een tegelzetter" value={qParty} onChange={(e) => setQParty(e.target.value)} autoFocus />
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input className="search" placeholder="Bedrag in €" inputMode="numeric" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
                   <button className="btn primary" style={{ width: 110, height: 40, fontSize: 15 }} disabled={parseEuro(qAmount) == null}
@@ -136,7 +151,7 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
               </div>
             ) : (
               <div className="form-row">
-                <button className="link-btn" style={{ fontSize: 15 }} onClick={() => setAddingQuote(true)}>+ Offerte</button>
+                <button className="link-btn" style={{ fontSize: 15 }} onClick={() => setAddingQuote(true)}>Offerte toevoegen</button>
               </div>
             )}
             {showActual && (
@@ -172,7 +187,7 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
           <div className="list" style={{ overflow: 'hidden' }}>
             {p.steps.map((s) => (
               <SwipeRow key={s.id} actions={[{ label: 'Verwijder', onClick: () => removeStep(id, s.id) }]}>
-                <button className={`check${s.done ? ' on' : ''}`} aria-label={s.done ? `${s.title} niet klaar` : `${s.title} klaar`} onClick={() => toggleStep(id, s.id)}>
+                <button className={`check${s.done ? ' on' : ''}`} aria-label={s.done ? `${s.title} niet klaar` : `${s.title} klaar`} onClick={() => onToggleStep(s.id)}>
                   {s.done && <Icon name="check" size={12} stroke={3.5} />}
                 </button>
                 <span className="row-main"><span style={{ fontSize: 15, color: s.done ? 'var(--text-3)' : undefined, textDecoration: s.done ? 'line-through' : undefined }}>{s.title}</span></span>
@@ -187,10 +202,10 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
 
         {(otherDeps.length > 0 || dependents.length > 0) && (
           <div className="section">
-            <div className="section-head"><span className="section-label">Samenhang</span></div>
+            <div className="section-head"><span className="section-label">Gekoppelde projecten</span></div>
             <div className="list">
-              {otherDeps.map((x) => depRow(x.id, data.projects[x.id].status === 'klaar' ? 'Klaar · ging hieraan vooraf' : 'Liefst eerst · niet verplicht', x.kind === 'soft' && data.projects[x.id].status !== 'klaar'))}
-              {dependents.map((dep) => depRow(dep, d.state[dep] === 'op_slot' ? (d.unlocks[id].includes(dep) ? 'Wacht · kan zodra dit klaar is' : 'Wacht · ook nog op iets anders') : `${STATE_LABEL[d.state[dep]]} · komt hierna`))}
+              {otherDeps.map((x) => depRow(x.id, data.projects[x.id].status === 'klaar' ? 'Klaar · moest eerst' : 'Liefst eerst · niet verplicht', x.kind === 'soft' && data.projects[x.id].status !== 'klaar'))}
+              {dependents.map((dep) => depRow(dep, d.state[dep] === 'op_slot' ? (d.unlocks[id].includes(dep) ? 'Wacht · kan na dit project' : 'Wacht · ook op een ander project') : `${STATE_LABEL[d.state[dep]]} · volgt hierop`))}
             </div>
           </div>
         )}
@@ -202,7 +217,7 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
               <textarea className="notes" placeholder="Maten, ideeën, links…" value={notes} onChange={(e) => setNotes(e.target.value)} autoFocus={notesOpen && !notes} onBlur={() => setNotesOpen(false)} />
             </div>
           ) : (
-            <button className="card pad link-btn" style={{ fontSize: 15, textAlign: 'left' }} onClick={() => setNotesOpen(true)}>+ Notitie</button>
+            <button className="card pad link-btn" style={{ fontSize: 15, textAlign: 'left' }} onClick={() => setNotesOpen(true)}>Notitie toevoegen</button>
           )}
         </div>
       </div>
@@ -212,7 +227,7 @@ export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: 
           onClose={() => setMenu(false)}
           actions={[
             isGoal ? { label: 'Niet meer als doel', onClick: () => setGoal(undefined) } : { label: 'Instellen als doel', onClick: () => { setGoal(id); toast('Doel ingesteld'); } },
-            ...(state === 'klaar' ? [{ label: 'Heropenen', onClick: () => reopenProject(id) }] : []),
+            ...(state === 'klaar' ? [{ label: 'Markeer als niet klaar', onClick: () => { reopenProject(id); toast('Project staat weer open'); } }] : []),
             { label: 'Verwijderen', destructive: true, onClick: () => { deleteProject(id); toast('Project verwijderd'); } },
           ]}
         />
