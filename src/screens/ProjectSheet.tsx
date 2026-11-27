@@ -93,7 +93,7 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
           <div className="sheet-body">
             <div className="field">
               <label htmlFor="titel">Wat wil je doen?</label>
-              <input id="titel" className="text-input big" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bijv. badkamer betegelen" autoFocus={!editId} enterKeyHint="done" />
+              <input id="titel" className="text-input big" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bijvoorbeeld: badkamer betegelen" autoFocus={!editId} enterKeyHint="done" />
             </div>
 
             <div className="section">
@@ -128,7 +128,7 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
                         <button className={x.kind === 'hard' ? 'on' : ''} onClick={() => setDeps(deps.map((y) => (y.id === x.id ? { ...y, kind: 'hard' } : y)))}>Moet eerst</button>
                         <button className={x.kind === 'soft' ? 'on' : ''} onClick={() => setDeps(deps.map((y) => (y.id === x.id ? { ...y, kind: 'soft' } : y)))}>Liefst eerst</button>
                       </div>
-                      <span className="row-sub">{x.kind === 'hard' ? 'Dit project wacht tot dat klaar is.' : 'Een tip voor de volgorde; je kunt al wel beginnen.'}</span>
+                      <span className="row-sub">{x.kind === 'hard' ? 'Dit project kan pas beginnen als dat klaar is.' : 'Alleen een tip voor de volgorde; je kunt al beginnen.'}</span>
                     </div>
                   );
                 })}
@@ -147,15 +147,15 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
                         </button>
                       ))}
                     </div>
-                    <button className="link-btn" style={{ textAlign: 'left', fontSize: 15 }} onClick={() => { setPicking(false); setQuery(''); }}>Sluit lijst</button>
+                    <button className="link-btn" style={{ textAlign: 'left', fontSize: 15 }} onClick={() => { setPicking(false); setQuery(''); }}>Sluit</button>
                   </div>
                 ) : (
                   <>
                     {Object.keys(data.projects).length > (editId ? 1 : 0) && (
-                      <button className="link-btn" style={{ textAlign: 'left', fontSize: 15 }} onClick={() => setPicking(true)}>+ Kies een project</button>
+                      <button className="link-btn" style={{ textAlign: 'left', fontSize: 15 }} onClick={() => setPicking(true)}>Kies een project</button>
                     )}
                     {Object.keys(data.projects).length <= (editId ? 1 : 0) && (
-                      <span className="row-sub">Dit is je eerste project. Later kun je hier aangeven waar een project op wacht.</span>
+                      <span className="row-sub">Dit is je eerste project. Later kun je hier aangeven waarop een project wacht.</span>
                     )}
                     {suggestion && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: deps.length ? undefined : '1px solid var(--sep)', paddingTop: 10 }}>
@@ -173,8 +173,8 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
               <div className="banner" style={{ animation: 'none' }}>
                 <div className="level-badge sm"><small>STAP</small><b>{preview.step}</b></div>
                 <span style={{ fontSize: 13 }}>
-                  Komt automatisch in het {preview.name ?? 'traject'} als stap {preview.step}
-                  {preview.blockers.length ? `, en gaat open zodra ${preview.blockers.join(' en ')} klaar ${preview.blockers.length === 1 ? 'is' : 'zijn'}.` : ', en is meteen beschikbaar.'}
+                  Wordt stap {preview.step} in het {preview.name ?? 'traject'}
+                  {preview.blockers.length ? ` en kan beginnen zodra ${preview.blockers.join(' en ')} klaar ${preview.blockers.length === 1 ? 'is' : 'zijn'}.` : ' en kan meteen beginnen.'}
                 </span>
               </div>
             )}
