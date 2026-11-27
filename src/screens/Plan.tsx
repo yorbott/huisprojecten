@@ -80,7 +80,7 @@ function RouteCard({ nav }: { nav: Nav }) {
                 <span className="row-main">
                   <span className="tl-title">{data.projects[id].title}</span>
                   <span className="row-sub">
-                    {isNext ? (st === 'bezig' ? 'Bezig · hier ben je nu' : 'Kan nu · je volgende stap') : isGoal && st !== 'klaar' ? `${STATE_LABEL[st]} · je doel` : STATE_LABEL[st]}
+                    {isNext ? (st === 'bezig' ? 'Bezig · hier werk je nu aan' : 'Kan nu · je volgende stap') : isGoal && st !== 'klaar' ? `${STATE_LABEL[st]} · je doel` : STATE_LABEL[st]}
                   </span>
                 </span>
                 {isNext && <span className="tl-badge">Volgende</span>}
@@ -101,7 +101,8 @@ function TrajectCard({ t, nav }: { t: Traject; nav: Nav }) {
   const [showDone, setShowDone] = useState(false);
   const complete = t.done === t.ids.length;
   const next = t.ids.find((i) => d.state[i] === 'bezig') ?? t.ids.find((i) => d.state[i] === 'beschikbaar');
-  const shown = showDone ? t.ids : t.ids.filter((i) => data.projects[i].status !== 'klaar');
+  // bij een afgerond traject altijd alles tonen, anders lijkt het leeg
+  const shown = complete || showDone ? t.ids : t.ids.filter((i) => data.projects[i].status !== 'klaar');
   return (
     <div className="card traject-card">
       <button className="traject-head tappable" onClick={() => setOpen(!open)} aria-expanded={open}>
@@ -122,7 +123,7 @@ function TrajectCard({ t, nav }: { t: Traject; nav: Nav }) {
           {shown.map((id) => <Row key={id} id={id} nav={nav} />)}
           {t.done > 0 && !complete && (
             <button className="link-btn" style={{ fontSize: 14, padding: '10px 0' }} onClick={() => setShowDone(!showDone)}>
-              {showDone ? 'Verberg wat al klaar is' : `Toon ook wat al klaar is (${t.done})`}
+              {showDone ? 'Verberg voltooide' : `Toon voltooide (${t.done})`}
             </button>
           )}
         </div>
@@ -142,7 +143,7 @@ function LosseKlussen({ nav }: { nav: Nav }) {
       <button className="traject-head tappable" onClick={() => setOpen(!open)} aria-expanded={open}>
         <span className="row-main" style={{ gap: 2 }}>
           <span style={{ fontSize: 16, fontWeight: 600 }}>Losse klussen</span>
-          <span className="row-sub" style={{ fontSize: 13 }}>{openIds.length} te doen{done ? ` · ${done} klaar` : ''} · wachten nergens op</span>
+          <span className="row-sub" style={{ fontSize: 13 }}>{openIds.length} te doen{done ? ` · ${done} klaar` : ''}</span>
         </span>
         <span className={`collapse-btn${open ? ' open' : ''}`}><Icon name="chevronDown" size={16} stroke={2.5} /></span>
       </button>
@@ -153,17 +154,28 @@ function LosseKlussen({ nav }: { nav: Nav }) {
 
 function Trajecten({ nav }: { nav: Nav }) {
   const d = useDerived();
+  const [showFinished, setShowFinished] = useState(false);
+  const active = d.trajecten.filter((t) => t.done < t.ids.length);
+  const finished = d.trajecten.filter((t) => t.done === t.ids.length);
   return (
     <div className="stack" style={{ gap: 12 }}>
       <RouteCard nav={nav} />
       {(d.trajecten.length > 0 || d.losse.length > 0) && (
         <div className="section-head" style={{ paddingTop: 10 }}><span className="section-label">Alle projecten</span></div>
       )}
-      {d.trajecten.map((t) => <TrajectCard key={t.id} t={t} nav={nav} />)}
+      {active.map((t) => <TrajectCard key={t.id} t={t} nav={nav} />)}
       {d.losse.length > 0 && <LosseKlussen nav={nav} />}
+      {finished.length > 0 && (
+        <>
+          <button className="link-btn" style={{ fontSize: 15, padding: '6px 4px', textAlign: 'left' }} onClick={() => setShowFinished(!showFinished)}>
+            {showFinished ? 'Verberg voltooide trajecten' : `Toon voltooide trajecten (${finished.length})`}
+          </button>
+          {showFinished && finished.map((t) => <TrajectCard key={t.id} t={t} nav={nav} />)}
+        </>
+      )}
       {d.trajecten.length === 0 && (
         <p className="row-sub" style={{ fontSize: 13, lineHeight: 1.4, padding: '0 4px', margin: 0 }}>
-          Geef bij een project aan waar het op wacht, dan ontstaat hier vanzelf een traject.
+          Geef bij een project aan waarop het wacht. Dan ontstaat hier vanzelf een traject.
         </p>
       )}
     </div>
@@ -255,7 +267,7 @@ function Matrix({ nav }: { nav: Nav }) {
       <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-2)', padding: '0 4px', flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)' }} />Kan nu</span>
         {!onlyOpen && <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, border: '2px solid var(--text-3)' }} />Wacht</span>}
-        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { setOnlyOpen(!onlyOpen); setPicked(undefined); }}>{onlyOpen ? 'Toon ook wat wacht' : 'Alleen wat nu kan'}</button>
+        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { setOnlyOpen(!onlyOpen); setPicked(undefined); }}>{onlyOpen ? 'Toon wachtende' : 'Verberg wachtende'}</button>
       </div>
       {QUADRANTS.map((q) => {
         const ids = items.filter((p) => quadrantOf(p.effort ?? 'M', p.impact ?? 3) === q.key).map((p) => p.id);
