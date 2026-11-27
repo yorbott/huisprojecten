@@ -198,6 +198,7 @@ button { font-family: inherit; color: inherit; }
 .pill.add { color: var(--accent); }
 .form-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--sep); gap: 12px; min-height: 48px; }
 .form-row:last-child { border-bottom: 0; }
+.form-row:has(+ .form-hint) { border-bottom: 0; }
 .form-row .label { font-size: 16px; }
 .mini-seg { display: flex; gap: 4px; }
 .mini-seg button { min-width: 38px; border: 0; border-radius: 8px; padding: 6px 8px; font-size: 14px; background: var(--card-2); cursor: pointer; }
@@ -295,3 +296,31 @@ textarea.notes { width: 100%; min-height: 90px; border: 0; outline: 0; resize: n
 .tl-title { font-size: 15px; font-weight: 600; }
 .tl-item.klaar .tl-title { color: var(--text-2); font-weight: 500; }
 .tl-badge { font-size: 12px; font-weight: 600; color: #fff; background: var(--accent); border-radius: 10px; padding: 3px 9px; flex-shrink: 0; }
+
+/* ---------- Vegen om te verwijderen ---------- */
+.swipe { position: relative; overflow: hidden; }
+.swipe-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+.swipe-actions button { flex: 1; border: 0; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+.swipe-front { position: relative; background: var(--card); touch-action: pan-y; }
+.swipe:last-child > .swipe-front { border-bottom: 0; }
+
+/* ---------- Trajectkaarten ---------- */
+.traject-card { overflow: hidden; }
+.traject-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; background: none; border: 0; text-align: left; font-size: inherit; cursor: pointer; }
+.traject-body { padding: 0 14px 4px; border-top: 1px solid var(--sep); display: flex; flex-direction: column; }
+
+/* ---------- Statusblok op projectpagina ---------- */
+.status-card { padding: 12px 14px 4px; }
+.status-card.done { padding-bottom: 12px; background: var(--green-soft); }
+.status-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; padding-bottom: 4px; }
+.status-card.wait .status-title { color: var(--text-2); }
+.status-card.done .status-title { color: var(--green-text); }
+
+/* ---------- Formulier-uitleg ---------- */
+.form-hint { font-size: 13px; color: var(--text-2); padding: 0 0 10px; margin-top: -4px; border-bottom: 1px solid var(--sep); }
+
+/* ---------- Ideeën ---------- */
+.idea-input { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 14px; padding: 6px 6px 6px 14px; margin-top: 14px; }
+.idea-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: none; border: 0; border-bottom: 1px solid var(--sep); text-align: left; font-size: inherit; cursor: pointer; }
+.swipe:last-child .idea-row { border-bottom: 0; }
+.idea-make { font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
