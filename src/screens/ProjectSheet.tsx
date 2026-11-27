@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { derive, formatRange } from '../logic';
 import { canDependOn, createProject, DEFAULT_ROOMS, getData, updateProject, useData } from '../store';
 import type { Dep, Doer, Effort, Project } from '../types';
-import { Icon, parseEuro, Sheet } from '../ui';
+import { EFFORT_HINT, Icon, IMPACT_HINT, parseEuro, Sheet } from '../ui';
 
 export interface SheetPrefill {
   title?: string;
   room?: string;
+  /** idee waar dit project uit voortkomt; wordt opgeruimd na aanmaken */
+  ideaId?: string;
 }
 
 export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?: string; prefill?: SheetPrefill; onClose: () => void; onCreated?: (id: string) => void }) {
@@ -124,8 +126,9 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
                       </div>
                       <div className="segmented">
                         <button className={x.kind === 'hard' ? 'on' : ''} onClick={() => setDeps(deps.map((y) => (y.id === x.id ? { ...y, kind: 'hard' } : y)))}>Moet eerst</button>
-                        <button className={x.kind === 'soft' ? 'on' : ''} onClick={() => setDeps(deps.map((y) => (y.id === x.id ? { ...y, kind: 'soft' } : y)))}>Liever eerst</button>
+                        <button className={x.kind === 'soft' ? 'on' : ''} onClick={() => setDeps(deps.map((y) => (y.id === x.id ? { ...y, kind: 'soft' } : y)))}>Liefst eerst</button>
                       </div>
+                      <span className="row-sub">{x.kind === 'hard' ? 'Dit project wacht tot dat klaar is.' : 'Een tip voor de volgorde; je kunt al wel beginnen.'}</span>
                     </div>
                   );
                 })}
@@ -187,6 +190,7 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
                     ))}
                   </div>
                 </div>
+                <div className="form-hint">{effort ? `${effort} · ongeveer ${EFFORT_HINT[effort]}` : 'S een middag · M een weekend · L een paar weekenden · XL weken'}</div>
                 <div className="form-row">
                   <span className="label">Impact</span>
                   <div className="impact-dots" role="radiogroup" aria-label="Impact">
@@ -197,6 +201,7 @@ export function ProjectSheet({ editId, prefill, onClose, onCreated }: { editId?:
                     ))}
                   </div>
                 </div>
+                <div className="form-hint">{impact ? `${impact} van 5 · ${IMPACT_HINT[impact]}` : 'Hoeveel merk je ervan als het klaar is?'}</div>
                 <div className="form-row">
                   <span className="label">Kosten</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
