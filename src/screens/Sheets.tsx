@@ -51,7 +51,7 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
             <div className="section-head"><span className="section-label">Wat heeft het gekost?</span></div>
             <div className="card" style={{ background: 'var(--card-2)', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <label htmlFor="kosten" style={{ flex: 1, fontSize: 16 }}>Werkelijke kosten</label>
-              <input id="kosten" className="num-input" style={{ background: 'var(--card)', width: 120 }} inputMode="numeric" placeholder="€ 0" value={cost} onChange={(e) => setCost(e.target.value)} />
+              <input id="kosten" className="num-input" style={{ background: 'var(--card)', width: 120 }} inputMode="numeric" placeholder="Optioneel" value={cost} onChange={(e) => setCost(e.target.value)} />
             </div>
             {est && parsed != null && (
               <span className="row-sub" style={{ padding: '0 4px', color: parsed <= est.max ? 'var(--green-text)' : 'var(--orange-text)' }}>
@@ -62,7 +62,7 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
 
           {result.unlocked.length > 0 && (
             <div className="section">
-              <div className="section-head"><span className="section-label">Nu beschikbaar</span></div>
+              <div className="section-head"><span className="section-label">Kan nu</span></div>
               <div className="list" style={{ background: 'var(--card-2)' }}>
                 {result.unlocked.map((u) => {
                   const up = data.projects[u];
@@ -73,7 +73,7 @@ export function CompletionSheet({ id, result, nav, onClose }: { id: string; resu
                       <span className={`node beschikbaar${onRoute ? ' route' : ''}`}><span className="dot" /></span>
                       <span className="row-main">
                         <span className="row-title">{up.title}</span>
-                        <span className="row-sub">{data.goalId === u ? 'Dit is je doel!' : onRoute ? 'Op de route naar je doel' : [up.effort ? `Moeite ${up.effort}` : '', formatRange(estimate(up))].filter(Boolean).join(' · ')}</span>
+                        <span className="row-sub">{data.goalId === u ? 'Dit is je doel!' : onRoute ? 'Op weg naar je doel' : [up.effort ? `Moeite ${up.effort}` : '', formatRange(estimate(up))].filter(Boolean).join(' · ')}</span>
                       </span>
                     </button>
                   );
