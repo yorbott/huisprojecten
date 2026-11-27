@@ -26,16 +26,69 @@ function Row({ id, nav }: { id: string; nav: Nav }) {
   const data = useData();
   const d = useDerived();
   const p = data.projects[id];
-  const onRoute = d.route.has(id);
   return (
     <button className="row tappable" onClick={() => nav.openProject(id)}>
-      <StateNode state={d.state[id]} route={onRoute} />
+      <StateNode state={d.state[id]} />
       <span className="row-main">
         <span className="row-title" style={{ color: d.state[id] === 'klaar' ? 'var(--text-2)' : undefined }}>{p.title}</span>
         <span className="row-sub">{subFor(id, data, d)}</span>
       </span>
-      {onRoute && <span className="route-tag">Route</span>}
     </button>
+  );
+}
+
+/** De route naar het doel als duidelijke stappenlijst. */
+function RouteCard({ nav }: { nav: Nav }) {
+  const data = useData();
+  const d = useDerived();
+  const goal = data.goalId ? data.projects[data.goalId] : undefined;
+  if (!goal) {
+    return (
+      <div className="card pad row-sub" style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span style={{ color: 'var(--accent)' }}><Icon name="flag" size={20} /></span>
+        Heb je een droomproject? Open het en kies ⋯ › Instellen als doel. Dan zie je hier stap voor stap hoe je er komt.
+      </div>
+    );
+  }
+  const left = d.route.size;
+  const nextId = d.routeSteps.find((i) => d.state[i] === 'beschikbaar' || d.state[i] === 'bezig');
+  return (
+    <div className="card route-card">
+      <div className="route-head">
+        <span className="route-flag"><Icon name="flag" size={18} stroke={2.2} /></span>
+        <span className="row-main">
+          <span className="row-sub" style={{ fontSize: 13 }}>Jouw doel</span>
+          <span style={{ fontSize: 17, fontWeight: 600 }}>{goal.title}</span>
+        </span>
+        <span style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>{goal.status === 'klaar' ? 'Bereikt!' : `nog ${left} ${left === 1 ? 'stap' : 'stappen'}`}</span>
+          {goal.status !== 'klaar' && d.routeCost && <span className="row-sub">{formatRange(d.routeCost)}</span>}
+        </span>
+      </div>
+      <ol className="timeline">
+        {d.routeSteps.map((id) => {
+          const st = d.state[id];
+          const isGoal = id === goal.id;
+          const isNext = id === nextId;
+          return (
+            <li key={id} className={`tl-item ${st}${isNext ? ' next' : ''}`}>
+              <button className="tl-btn" onClick={() => nav.openProject(id)}>
+                <span className="tl-dot">
+                  {st === 'klaar' ? <Icon name="check" size={12} stroke={3} /> : isGoal ? <Icon name="flag" size={12} stroke={2.6} /> : null}
+                </span>
+                <span className="row-main">
+                  <span className="tl-title">{data.projects[id].title}</span>
+                  <span className="row-sub">
+                    {st === 'klaar' ? 'Klaar' : isNext ? (st === 'bezig' ? 'Hier ben je nu mee bezig' : 'Dit is je volgende stap') : isGoal ? 'Je doel' : st === 'op_slot' ? 'Daarna' : 'Kan ook al'}
+                  </span>
+                </span>
+                {isNext && <span className="tl-badge">Volgende</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 
@@ -43,35 +96,11 @@ function Trajecten({ nav }: { nav: Nav }) {
   const data = useData();
   const d = useDerived();
   const [losseOpen, setLosseOpen] = useState(false);
-  const goal = data.goalId ? data.projects[data.goalId] : undefined;
   const losseOpenCount = d.losse.filter((i) => data.projects[i].status !== 'klaar').length;
 
   return (
     <div className="stack" style={{ gap: 12 }}>
-      {goal ? (
-        <button className="goal-card tappable" onClick={() => nav.openProject(goal.id)}>
-          <Icon name="flag" size={22} />
-          <span className="row-main">
-            <span className="muted">Doel</span>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>{goal.title}</span>
-          </span>
-          <span style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-            {goal.status === 'klaar' ? (
-              <span style={{ fontSize: 16, fontWeight: 600 }}>Bereikt!</span>
-            ) : (
-              <>
-                <span style={{ fontSize: 16, fontWeight: 600 }}>Nog {d.route.size} {d.route.size === 1 ? 'stap' : 'stappen'}</span>
-                {d.routeCost && <span style={{ fontSize: 12, opacity: 0.85 }}>{formatRange(d.routeCost)}</span>}
-              </>
-            )}
-          </span>
-        </button>
-      ) : (
-        <div className="card pad row-sub" style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ color: 'var(--accent)' }}><Icon name="flag" size={20} /></span>
-          Kies een doelproject via ⋯ in een project. Dan zie je hier de snelste route ernaartoe.
-        </div>
-      )}
+      <RouteCard nav={nav} />
 
       {d.losse.length > 0 && (
         <div className="section">
@@ -171,7 +200,7 @@ function Matrix({ nav }: { nav: Nav }) {
           <div className="q q3">Opvullers</div>
           <div className="q q4">Later</div>
           {placed.map(({ id, x, y }) => (
-            <button key={id} className={`mdot${d.state[id] === 'op_slot' ? ' locked' : ''}${d.route.has(id) ? ' route' : ''}`} style={{ left: `${x}%`, top: `${y}%` }} aria-label={data.projects[id].title} onClick={() => nav.openProject(id)}>
+            <button key={id} className={`mdot${d.state[id] === 'op_slot' ? ' locked' : ''}`} style={{ left: `${x}%`, top: `${y}%` }} aria-label={data.projects[id].title} onClick={() => nav.openProject(id)}>
               {num.get(id)}
             </button>
           ))}
@@ -183,7 +212,6 @@ function Matrix({ nav }: { nav: Nav }) {
       <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-2)', padding: '0 4px', flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)' }} />Beschikbaar</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, border: '2px solid var(--text-3)' }} />Op slot</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)', boxShadow: '0 0 0 2px var(--bg), 0 0 0 3.5px var(--orange)' }} />Route</span>
         <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => setOnlyOpen(!onlyOpen)}>{onlyOpen ? 'Toon alles' : 'Alleen beschikbaar'}</button>
       </div>
       {QUADRANTS.map((q) => {
@@ -200,7 +228,6 @@ function Matrix({ nav }: { nav: Nav }) {
                     <span className="row-title">{data.projects[id].title}</span>
                     <span className="row-sub">{[STATE_LABEL[d.state[id]], `moeite ${data.projects[id].effort ?? '?'}`, `impact ${data.projects[id].impact ?? '?'}/5`].join(' · ')}</span>
                   </span>
-                  {d.route.has(id) && <span className="route-tag">Route</span>}
                 </button>
               ))}
             </div>
