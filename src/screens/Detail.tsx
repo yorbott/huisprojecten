@@ -6,7 +6,7 @@ import {
 import { ActionSheet, Icon, parseEuro, STATE_CHIP, STATE_LABEL, StateNode, toast, useClosing } from '../ui';
 import type { Nav } from '../App';
 
-export function DetailScreen({ id, nav, onBack }: { id: string; nav: Nav; onBack: () => void }) {
+export function DetailScreen({ id, nav, onBack, depth = 0 }: { id: string; nav: Nav; onBack: () => void; depth?: number }) {
   const data = useData();
   const d = useDerived();
   const p = data.projects[id];
@@ -62,7 +62,7 @@ export function DetailScreen({ id, nav, onBack }: { id: string; nav: Nav; onBack
   };
 
   return (
-    <div className={`screen pushed${leaving ? ' leaving' : ''}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className={`screen pushed${leaving ? ' leaving' : ''}`} style={{ zIndex: 20 + depth }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="navbar">
         <button className="nav-btn" onClick={close}><Icon name="chevronLeft" size={22} stroke={2.4} />Terug</button>
         <button className="icon-btn plain" aria-label="Meer opties" onClick={() => setMenu(true)}><Icon name="more" size={20} /></button>
@@ -71,14 +71,13 @@ export function DetailScreen({ id, nav, onBack }: { id: string; nav: Nav; onBack
       <div className="stack">
         <div className="stack" style={{ gap: 8 }}>
           <h1 className="detail-title">{p.title}</h1>
+          <p className="row-sub" style={{ fontSize: 15, margin: 0 }}>
+            {[p.room, p.doer === 'zelf' ? 'Zelf doen' : p.doer === 'vakman' ? 'Vakman' : '', `+${pointsFor(p)} punten`].filter(Boolean).join(' · ')}
+          </p>
           <div className="chips">
-            {traject && <span className="chip blue">{traject.name} · stap {d.depth[id]} van {traject.steps}</span>}
             <span className={`chip ${STATE_CHIP[state]}`}>{STATE_LABEL[state]}</span>
-            {isGoal && <span className="chip blue">Doel</span>}
-            {d.route.has(id) && !isGoal && <span className="chip blue">Route naar doel</span>}
-            <span className="chip orange">+{pointsFor(p)} pt</span>
-            {p.room && <span className="chip on-bg">{p.room}</span>}
-            {p.doer && <span className="chip on-bg">{p.doer === 'zelf' ? 'Zelf doen' : 'Vakman'}</span>}
+            {isGoal ? <span className="chip blue">Jouw doel</span> : d.route.has(id) ? <span className="chip blue">Op weg naar je doel</span> : null}
+            {traject && <span className="chip on-bg">{traject.name} · stap {d.depth[id]} van {traject.steps}</span>}
           </div>
         </div>
 
@@ -139,24 +138,36 @@ export function DetailScreen({ id, nav, onBack }: { id: string; nav: Nav; onBack
           </div>
         </div>
 
-        {(waitingOn.length > 0 || dependents.length > 0) && (
+        {waitingOn.length > 0 && (
           <div className="section">
-            <div className="section-head"><span className="section-label">Afhankelijkheden</span></div>
+            <div className="section-head"><span className="section-label">Wacht op</span></div>
             <div className="list">
               {waitingOn.map((x) => (
                 <button key={x.id} className="row tappable" onClick={() => nav.openProject(x.id)}>
                   {x.kind === 'soft' && data.projects[x.id].status !== 'klaar'
                     ? <span className="node" style={{ border: '2px dashed var(--text-3)' }} />
                     : <StateNode state={d.state[x.id]} />}
-                  <span className="row-main"><span style={{ fontSize: 15 }}>{data.projects[x.id].title}</span></span>
-                  <span className="row-sub">{x.kind === 'hard' ? 'Moet eerst' : 'Liever eerst'}</span>
+                  <span className="row-main">
+                    <span style={{ fontSize: 15 }}>{data.projects[x.id].title}</span>
+                    <span className="row-sub">{data.projects[x.id].status === 'klaar' ? 'Klaar' : x.kind === 'hard' ? 'Moet eerst' : 'Liever eerst, maar niet verplicht'}</span>
+                  </span>
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {dependents.length > 0 && (
+          <div className="section">
+            <div className="section-head"><span className="section-label">Hierna mogelijk</span></div>
+            <div className="list">
               {dependents.map((dep) => (
                 <button key={dep} className="row tappable" onClick={() => nav.openProject(dep)}>
-                  <span className="node bezig"><Icon name={d.unlocks[id].includes(dep) ? 'unlock' : 'lock'} size={12} stroke={2.6} /></span>
-                  <span className="row-main"><span style={{ fontSize: 15 }}>{data.projects[dep].title}</span></span>
-                  <span className="row-sub">{d.unlocks[id].includes(dep) ? 'Gaat hierna open' : 'Wacht hierop'}</span>
+                  <StateNode state={d.state[dep]} />
+                  <span className="row-main">
+                    <span style={{ fontSize: 15 }}>{data.projects[dep].title}</span>
+                    <span className="row-sub">{d.state[dep] === 'op_slot' ? (d.unlocks[id].includes(dep) ? 'Gaat open zodra dit klaar is' : 'Wacht ook nog op iets anders') : 'Al mogelijk'}</span>
+                  </span>
                 </button>
               ))}
             </div>
