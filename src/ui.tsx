@@ -197,23 +197,41 @@ export function formatDate(ts: number) {
 }
 
 /**
- * Hoofdscherm met grote titel. Bij scrollen verschijnt bovenin een kleine kop,
- * zoals in iOS-apps.
+ * Hoofdscherm met grote titel die, net als in iOS, tijdens het scrollen
+ * vloeiend krimpt en naar het midden van de navigatiebalk schuift.
  */
 export function ScreenShell({ title, subtitle, left, right, children }: { title: string; subtitle?: string; left?: ReactNode; right?: ReactNode; children: ReactNode }) {
-  const [compact, setCompact] = useState(false);
+  const [y, setY] = useState(0);
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ title: 0, box: 390 });
+  useEffect(() => {
+    const measure = () => setSize({ title: titleRef.current?.offsetWidth ?? 0, box: shellRef.current?.offsetWidth ?? 390 });
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [title]);
+
+  const D = 44; // afstand tussen het midden van de grote titel en de balk
+  const p = Math.min(1, Math.max(0, y / D));
+  const pull = y < 0 ? Math.min(0.1, -y / 600) : 0; // licht vergroten bij omlaag trekken
+  const scale = 1 - 0.5 * p + pull;
+  const tx = ((size.box - size.title * 0.5) / 2 - 20) * p;
+  const ty = y < 0 ? -y : -Math.min(y, D);
+  const barOpacity = Math.min(1, Math.max(0, (y - 30) / 14));
+
   return (
     <>
-      <div className="screen fade-in" onScroll={(e) => setCompact((e.currentTarget as HTMLDivElement).scrollTop > 48)}>
-        <div className="navbar">{left ?? <span />}{right ?? <span />}</div>
-        <h1 className="large-title" style={{ opacity: compact ? 0 : 1 }}>{title}</h1>
-        {subtitle && <p className="subtitle">{subtitle}</p>}
+      <div ref={shellRef} className="screen fade-in" onScroll={(e) => setY((e.currentTarget as HTMLDivElement).scrollTop)}>
+        <div className="title-space" aria-hidden="true" />
+        <h1 className="sr-only">{title}</h1>
+        {subtitle && <p className="subtitle" style={{ opacity: 1 - p }}>{subtitle}</p>}
         {children}
       </div>
-      <div className={`compact-bar${compact ? ' on' : ''}`} aria-hidden={!compact}>
-        <span className="compact-side">{left}</span>
-        <span className="compact-title">{title}</span>
-        <span className="compact-side right">{right}</span>
+      <div className="nav-overlay">
+        <div className="nav-overlay-bg" style={{ opacity: barOpacity }} />
+        <div className="nav-overlay-row">{left ?? <span />}{right ?? <span />}</div>
+        <span ref={titleRef} className="morph-title" aria-hidden="true" style={{ transform: `translate(${tx}px, ${ty}px) scale(${scale})` }}>{title}</span>
       </div>
     </>
   );
