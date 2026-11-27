@@ -195,3 +195,26 @@ export function SwipeRow({ children, actions, className = 'row' }: { children: R
 export function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: new Date(ts).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 }
+
+/**
+ * Hoofdscherm met grote titel. Bij scrollen verschijnt bovenin een kleine kop,
+ * zoals in iOS-apps.
+ */
+export function ScreenShell({ title, subtitle, left, right, children }: { title: string; subtitle?: string; left?: ReactNode; right?: ReactNode; children: ReactNode }) {
+  const [compact, setCompact] = useState(false);
+  return (
+    <>
+      <div className="screen fade-in" onScroll={(e) => setCompact((e.currentTarget as HTMLDivElement).scrollTop > 48)}>
+        <div className="navbar">{left ?? <span />}{right ?? <span />}</div>
+        <h1 className="large-title" style={{ opacity: compact ? 0 : 1 }}>{title}</h1>
+        {subtitle && <p className="subtitle">{subtitle}</p>}
+        {children}
+      </div>
+      <div className={`compact-bar${compact ? ' on' : ''}`} aria-hidden={!compact}>
+        <span className="compact-side">{left}</span>
+        <span className="compact-title">{title}</span>
+        <span className="compact-side right">{right}</span>
+      </div>
+    </>
+  );
+}
