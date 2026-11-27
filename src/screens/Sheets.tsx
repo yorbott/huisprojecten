@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { estimate, formatEuro, formatRange } from '../logic';
+import { EFFORT_POINTS, estimate, formatEuro, formatRange, levelThreshold, pointsFor } from '../logic';
 import { emptyData, exportJson, importJson, replaceAll, updateProject, useData, useDerived, type CompletionResult } from '../store';
 import { sampleData } from '../sample';
-import { Icon, parseEuro, Sheet, toast } from '../ui';
+import { EFFORT_HINT, formatDate, Icon, parseEuro, Sheet, toast } from '../ui';
 import type { Nav } from '../App';
 
 export function CompletionSheet({ id, result, nav, onClose }: { id: string; result: CompletionResult; nav: Nav; onClose: () => void }) {
@@ -163,6 +163,82 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </div>
 
             <p className="row-sub" style={{ textAlign: 'center', fontSize: 12 }}>Huisprojecten · versie 0.1</p>
+          </div>
+        </>
+      )}
+    </Sheet>
+  );
+}
+
+/** Uitleg bij het huis-level: hoe punten werken en wat je laatst verdiende. */
+export function LevelSheet({ onClose }: { onClose: () => void }) {
+  const data = useData();
+  const d = useDerived();
+  const l = d.level;
+  const recent = Object.values(data.projects)
+    .filter((p) => p.status === 'klaar')
+    .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
+    .slice(0, 5);
+  return (
+    <Sheet onClose={onClose}>
+      {(close) => (
+        <>
+          <div className="sheet-header">
+            <span />
+            <span className="title">Huislevel</span>
+            <button style={{ textAlign: 'right', fontWeight: 600 }} onClick={close}>Gereed</button>
+          </div>
+          <div className="sheet-body">
+            <div className="card pad" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+              <div className="level-badge"><small>HUIS</small><b>{l.level}</b></div>
+              <span style={{ fontSize: 20, fontWeight: 700 }}>Huislevel {l.level}</span>
+              <div className="progress xp" style={{ width: '100%' }}><div style={{ width: `${Math.max(3, l.progress * 100)}%` }} /></div>
+              <span className="row-sub" style={{ fontSize: 14 }}>{l.points} punten · nog {l.toNext} tot level {l.level + 1}</span>
+            </div>
+
+            <div className="section">
+              <div className="section-head"><span className="section-label">Zo verdien je punten</span></div>
+              <div className="list">
+                {(['S', 'M', 'L', 'XL'] as const).map((e) => (
+                  <div className="form-row" key={e}>
+                    <span className="label">{e} <span className="row-sub" style={{ fontSize: 14 }}>· {EFFORT_HINT[e]}</span></span>
+                    <span style={{ fontWeight: 600 }}>{EFFORT_POINTS[e]} pt</span>
+                  </div>
+                ))}
+              </div>
+              <span className="row-sub" style={{ padding: '0 4px', fontSize: 13, lineHeight: 1.4 }}>
+                Elk afgerond project telt mee. Hoe meer je merkt van een klus (impact), hoe meer punten: van 80% bij 1 bolletje tot 120% bij 5.
+              </span>
+            </div>
+
+            {recent.length > 0 && (
+              <div className="section">
+                <div className="section-head"><span className="section-label">Laatst verdiend</span></div>
+                <div className="list">
+                  {recent.map((p) => (
+                    <div className="form-row" key={p.id}>
+                      <span className="row-main">
+                        <span style={{ fontSize: 15 }}>{p.title}</span>
+                        {p.completedAt && <span className="row-sub">{formatDate(p.completedAt)}</span>}
+                      </span>
+                      <span style={{ fontWeight: 600, color: 'var(--orange-text)' }}>+{pointsFor(p)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="section">
+              <div className="section-head"><span className="section-label">Volgende levels</span></div>
+              <div className="list">
+                {[1, 2, 3].map((k) => (
+                  <div className="form-row" key={k}>
+                    <span className="label">Level {l.level + k}</span>
+                    <span className="row-sub" style={{ fontSize: 15 }}>bij {levelThreshold(l.level + k)} punten</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </>
       )}
