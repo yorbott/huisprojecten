@@ -6,7 +6,7 @@ import { PlanScreen, RuimtesScreen } from './screens/Plan';
 import { IdeeenScreen } from './screens/Ideeen';
 import { DetailScreen } from './screens/Detail';
 import { ProjectSheet, type SheetPrefill } from './screens/ProjectSheet';
-import { CompletionSheet, SettingsSheet } from './screens/Sheets';
+import { CompletionSheet, LevelSheet, SettingsSheet } from './screens/Sheets';
 
 type Tab = 'nu' | 'plan' | 'ruimtes' | 'ideeen';
 
@@ -16,13 +16,15 @@ export interface Nav {
   openEdit: (id: string) => void;
   complete: (id: string) => void;
   openSettings: () => void;
+  openLevel: () => void;
 }
 
 type SheetState =
   | { kind: 'new'; prefill?: SheetPrefill }
   | { kind: 'edit'; id: string }
   | { kind: 'done'; id: string; result: CompletionResult }
-  | { kind: 'settings' };
+  | { kind: 'settings' }
+  | { kind: 'level' };
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'nu', label: 'Nu', icon: 'bolt' },
@@ -43,6 +45,7 @@ export function App() {
     openEdit: (id) => setSheet({ kind: 'edit', id }),
     complete: (id) => setSheet({ kind: 'done', id, result: completeProject(id) }),
     openSettings: () => setSheet({ kind: 'settings' }),
+    openLevel: () => setSheet({ kind: 'level' }),
   };
 
   if (!loaded) return <div className="app" />;
@@ -75,6 +78,7 @@ export function App() {
       {sheet?.kind === 'edit' && <ProjectSheet editId={sheet.id} onClose={() => setSheet(undefined)} />}
       {sheet?.kind === 'done' && <CompletionSheet id={sheet.id} result={sheet.result} nav={nav} onClose={() => setSheet(undefined)} />}
       {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(undefined)} />}
+      {sheet?.kind === 'level' && <LevelSheet onClose={() => setSheet(undefined)} />}
 
       <ToastHost />
     </div>
