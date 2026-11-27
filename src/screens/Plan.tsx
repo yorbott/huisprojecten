@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { estimate, formatRange, type Derived, type Traject } from '../logic';
 import { useData, useDerived } from '../store';
 import type { AppData } from '../types';
-import { Icon, STATE_LABEL, StateNode } from '../ui';
+import { Icon, ScreenShell, STATE_LABEL, StateNode } from '../ui';
 import type { Nav } from '../App';
 
 /** Eén korte regel onder een project, met de vaste woorden Kan nu · Bezig · Wacht · Klaar. */
@@ -122,7 +122,7 @@ function TrajectCard({ t, nav }: { t: Traject; nav: Nav }) {
           {shown.map((id) => <Row key={id} id={id} nav={nav} />)}
           {t.done > 0 && !complete && (
             <button className="link-btn" style={{ fontSize: 14, padding: '10px 0' }} onClick={() => setShowDone(!showDone)}>
-              {showDone ? 'Verberg klare projecten' : `Toon ${t.done} klare ${t.done === 1 ? 'project' : 'projecten'}`}
+              {showDone ? 'Verberg wat al klaar is' : `Toon ook wat al klaar is (${t.done})`}
             </button>
           )}
         </div>
@@ -187,7 +187,8 @@ function quadrantOf(effort: string, impact: number) {
 function Matrix({ nav }: { nav: Nav }) {
   const data = useData();
   const d = useDerived();
-  const [onlyOpen, setOnlyOpen] = useState(false);
+  const [onlyOpen, setOnlyOpen] = useState(true);
+  const [picked, setPicked] = useState<string>();
   const items = Object.values(data.projects)
     .filter((p) => p.status !== 'klaar' && (!onlyOpen || d.state[p.id] !== 'op_slot'))
     .sort((a, b) => (b.impact ?? 3) - (a.impact ?? 3) || EFFORTS.indexOf(a.effort ?? 'M') - EFFORTS.indexOf(b.effort ?? 'M') || a.title.localeCompare(b.title, 'nl'));
@@ -216,7 +217,7 @@ function Matrix({ nav }: { nav: Nav }) {
 
   return (
     <div className="stack" style={{ gap: 12 }}>
-      <div className="card" style={{ padding: '14px 14px 10px 30px', position: 'relative' }}>
+      <div className="card" style={{ padding: '14px 14px 10px 30px', position: 'relative' }} onClick={() => setPicked(undefined)}>
         <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'rotate(-90deg) translateX(50%)', transformOrigin: 'left top', fontSize: 11, fontWeight: 600, color: 'var(--text-2)' }}>IMPACT</span>
         <div className="matrix">
           <div className="q q1">Snelle winst</div>
@@ -224,10 +225,28 @@ function Matrix({ nav }: { nav: Nav }) {
           <div className="q q3">Opvullers</div>
           <div className="q q4">Later</div>
           {placed.map(({ id, x, y }) => (
-            <button key={id} className={`mdot${d.state[id] === 'op_slot' ? ' locked' : ''}`} style={{ left: `${x}%`, top: `${y}%` }} aria-label={data.projects[id].title} onClick={() => nav.openProject(id)}>
+            <button key={id} className={`mdot${d.state[id] === 'op_slot' ? ' locked' : ''}${picked === id ? ' picked' : ''}`} style={{ left: `${x}%`, top: `${y}%` }} aria-label={data.projects[id].title} onClick={(e) => { e.stopPropagation(); setPicked(picked === id ? undefined : id); }}>
               {num.get(id)}
             </button>
           ))}
+          {picked && (() => {
+            const pos = placed.find((q) => q.id === picked);
+            if (!pos) return null;
+            const below = pos.y < 30;
+            return (
+              <button
+                className={`mtip${below ? ' below' : ''}`}
+                style={{ left: `${Math.min(64, Math.max(36, pos.x))}%`, top: `${pos.y}%` }}
+                onClick={(e) => { e.stopPropagation(); nav.openProject(picked); }}
+              >
+                <span className="row-main">
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{data.projects[picked].title}</span>
+                  <span className="row-sub">{STATE_LABEL[d.state[picked]]} · tik om te openen</span>
+                </span>
+                <Icon name="chevronRight" size={14} stroke={2.5} />
+              </button>
+            );
+          })()}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', paddingTop: 8 }}>
           <span>S</span><span>MOEITE</span><span>XL</span>
@@ -235,8 +254,8 @@ function Matrix({ nav }: { nav: Nav }) {
       </div>
       <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-2)', padding: '0 4px', flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: 'var(--accent)' }} />Kan nu</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, border: '2px solid var(--text-3)' }} />Wacht</span>
-        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => setOnlyOpen(!onlyOpen)}>{onlyOpen ? 'Toon alles' : 'Alleen wat nu kan'}</button>
+        {!onlyOpen && <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, border: '2px solid var(--text-3)' }} />Wacht</span>}
+        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { setOnlyOpen(!onlyOpen); setPicked(undefined); }}>{onlyOpen ? 'Toon ook wat wacht' : 'Alleen wat nu kan'}</button>
       </div>
       {QUADRANTS.map((q) => {
         const ids = items.filter((p) => quadrantOf(p.effort ?? 'M', p.impact ?? 3) === q.key).map((p) => p.id);
@@ -266,12 +285,7 @@ export function PlanScreen({ nav }: { nav: Nav }) {
   const [mode, setMode] = useState<'trajecten' | 'matrix'>('trajecten');
   const data = useData();
   return (
-    <div className="screen fade-in">
-      <div className="navbar">
-        <span />
-        <button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>
-      </div>
-      <h1 className="large-title">Plan</h1>
+    <ScreenShell title="Plan" right={<button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>}>
       <div className="segmented" style={{ margin: '12px 0' }}>
         <button className={mode === 'trajecten' ? 'on' : ''} onClick={() => setMode('trajecten')}>Trajecten</button>
         <button className={mode === 'matrix' ? 'on' : ''} onClick={() => setMode('matrix')}>Matrix</button>
@@ -279,7 +293,7 @@ export function PlanScreen({ nav }: { nav: Nav }) {
       {Object.keys(data.projects).length === 0 ? (
         <div className="empty"><p>Nog geen projecten. Voeg er een toe met de plusknop.</p></div>
       ) : mode === 'trajecten' ? <Trajecten nav={nav} /> : <Matrix nav={nav} />}
-    </div>
+    </ScreenShell>
   );
 }
 
@@ -294,12 +308,7 @@ export function RuimtesScreen({ nav }: { nav: Nav }) {
   const rooms = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'nl'));
   const order = ['bezig', 'beschikbaar', 'op_slot', 'klaar'];
   return (
-    <div className="screen fade-in">
-      <div className="navbar">
-        <span />
-        <button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>
-      </div>
-      <h1 className="large-title">Ruimtes</h1>
+    <ScreenShell title="Ruimtes" right={<button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>}>
       <div className="stack" style={{ marginTop: 14 }}>
         {rooms.length === 0 && <div className="empty"><p>Nog geen projecten.</p></div>}
         {rooms.map((r) => {
@@ -316,6 +325,6 @@ export function RuimtesScreen({ nav }: { nav: Nav }) {
           );
         })}
       </div>
-    </div>
+    </ScreenShell>
   );
 }
