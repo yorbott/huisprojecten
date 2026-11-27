@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { completeProject, useLoaded, type CompletionResult } from './store';
+import { completeProject, removeIdea, useLoaded, type CompletionResult } from './store';
 import { Icon, ToastHost } from './ui';
 import { NuScreen } from './screens/Nu';
-import { IdeeenScreen, PlanScreen, RuimtesScreen } from './screens/Plan';
+import { PlanScreen, RuimtesScreen } from './screens/Plan';
+import { IdeeenScreen } from './screens/Ideeen';
 import { DetailScreen } from './screens/Detail';
 import { ProjectSheet, type SheetPrefill } from './screens/ProjectSheet';
 import { CompletionSheet, SettingsSheet } from './screens/Sheets';
@@ -53,7 +54,7 @@ export function App() {
       {tab === 'nu' && <NuScreen nav={nav} />}
       {tab === 'plan' && <PlanScreen nav={nav} />}
       {tab === 'ruimtes' && <RuimtesScreen nav={nav} />}
-      {tab === 'ideeen' && <IdeeenScreen />}
+      {tab === 'ideeen' && <IdeeenScreen nav={nav} />}
 
       {stack.map((id, i) => (
         <DetailScreen key={`${i}-${id}`} id={id} nav={nav} depth={i} onBack={() => setStack((s) => s.slice(0, i))} />
@@ -70,7 +71,7 @@ export function App() {
         </nav>
       )}
 
-      {sheet?.kind === 'new' && <ProjectSheet prefill={sheet.prefill} onClose={() => setSheet(undefined)} onCreated={(id) => nav.openProject(id)} />}
+      {sheet?.kind === 'new' && <ProjectSheet prefill={sheet.prefill} onClose={() => setSheet(undefined)} onCreated={(id) => { if (sheet.prefill?.ideaId) removeIdea(sheet.prefill.ideaId); nav.openProject(id); }} />}
       {sheet?.kind === 'edit' && <ProjectSheet editId={sheet.id} onClose={() => setSheet(undefined)} />}
       {sheet?.kind === 'done' && <CompletionSheet id={sheet.id} result={sheet.result} nav={nav} onClose={() => setSheet(undefined)} />}
       {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(undefined)} />}
