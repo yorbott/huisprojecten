@@ -74,5 +74,16 @@ export function sampleData(): AppData {
   ];
   const projects: Record<string, Project> = {};
   for (const x of list) projects[x.id] = x;
-  return { version: 1, projects, goalId: 's-douche', rooms: [] };
+  const now = Date.now();
+  return {
+    version: 1,
+    projects,
+    goalId: 's-douche',
+    rooms: [],
+    ideas: [
+      { id: 'i1', text: 'Kookeiland in de keuken', createdAt: now - 3 * 86400_000 },
+      { id: 'i2', text: 'Slimme thermostaatkranen', createdAt: now - 4 * 86400_000 },
+      { id: 'i3', text: 'Overkapping achter in de tuin', createdAt: now - 8 * 86400_000 },
+    ],
+  };
 }
