@@ -3,13 +3,25 @@ import { App } from './App';
 import { loadData } from './store';
 import './styles.css';
 
-// Houd de zichtbare schermhoogte bij (krimpt als het toetsenbord opent) en voorkom dat iOS de pagina verschuift.
+// Houd de zichtbare schermhoogte bij. Als het toetsenbord opent, krimpt de app mee
+// en schuift het actieve invoerveld in beeld, net boven het toetsenbord.
 const vv = window.visualViewport;
+let kbTimer: number | undefined;
 function syncViewport() {
   const root = document.documentElement;
-  root.style.setProperty('--vvh', `${vv ? vv.height : window.innerHeight}px`);
+  const h = vv ? vv.height : window.innerHeight;
+  root.style.setProperty('--vvh', `${h}px`);
   root.style.setProperty('--vvtop', `${vv ? vv.offsetTop : 0}px`);
+  const keyboard = window.innerHeight - h > 120;
+  root.classList.toggle('kb', keyboard);
   if (window.scrollY) window.scrollTo(0, 0);
+  if (keyboard) {
+    window.clearTimeout(kbTimer);
+    kbTimer = window.setTimeout(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 80);
+  }
 }
 syncViewport();
 vv?.addEventListener('resize', syncViewport);
