@@ -3,7 +3,7 @@ import { bestScore, estimate, formatRange, type Derived } from '../logic';
 import { dismissUnlock, replaceAll, useData, useDerived } from '../store';
 import { sampleData } from '../sample';
 import type { Project } from '../types';
-import { Icon } from '../ui';
+import { Icon, ScreenShell } from '../ui';
 import type { Nav } from '../App';
 
 /** Eén rustige kaart: titel, één regel uitleg, hooguit één label. */
@@ -29,10 +29,10 @@ export function ProjectCard({ p, d, nav, nextOnRoute }: { p: Project; d: Derived
   );
 }
 
-export function LevelCard({ d }: { d: Derived }) {
+export function LevelCard({ d, onOpen }: { d: Derived; onOpen: () => void }) {
   const l = d.level;
   return (
-    <div className="card pad" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+    <button className="card pad tappable" style={{ display: 'flex', alignItems: 'center', gap: 14, border: 0, width: '100%', textAlign: 'left', fontSize: 'inherit' }} onClick={onOpen} aria-label={`Huislevel ${l.level}, uitleg over punten`}>
       <div className="level-badge sm"><small>HUIS</small><b>{l.level}</b></div>
       <div className="row-main" style={{ gap: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -41,7 +41,8 @@ export function LevelCard({ d }: { d: Derived }) {
         </div>
         <div className="progress xp"><div style={{ width: `${Math.max(3, l.progress * 100)}%` }} /></div>
       </div>
-    </div>
+      <span className="chev"><Icon name="chevronRight" size={16} stroke={2.5} /></span>
+    </button>
   );
 }
 
@@ -60,13 +61,11 @@ export function NuScreen({ nav }: { nav: Nav }) {
   const unlockTitles = unlock?.ids.map((i) => data.projects[i]).filter((p) => p && p.status !== 'klaar') ?? [];
 
   return (
-    <div className="screen fade-in">
-      <div className="navbar">
-        <button className="icon-btn plain" aria-label="Instellingen" onClick={nav.openSettings}><Icon name="gear" size={19} /></button>
-        <button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>
-      </div>
-      <h1 className="large-title">Nu</h1>
-
+    <ScreenShell
+      title="Nu"
+      left={<button className="icon-btn plain" aria-label="Instellingen" onClick={nav.openSettings}><Icon name="gear" size={19} /></button>}
+      right={<button className="icon-btn filled" aria-label="Nieuw project" onClick={() => nav.openNew()}><Icon name="plus" size={18} stroke={2.5} /></button>}
+    >
       {all.length === 0 ? (
         <div className="empty">
           <div className="level-badge"><small>HUIS</small><b>1</b></div>
@@ -77,7 +76,7 @@ export function NuScreen({ nav }: { nav: Nav }) {
         </div>
       ) : (
         <div className="stack" style={{ marginTop: 14, gap: 22 }}>
-          <LevelCard d={d} />
+          <LevelCard d={d} onOpen={nav.openLevel} />
 
           {unlock && unlockTitles.length > 0 && (
             <div className="banner">
@@ -135,6 +134,6 @@ export function NuScreen({ nav }: { nav: Nav }) {
           </div>
         </div>
       )}
-    </div>
+    </ScreenShell>
   );
 }
