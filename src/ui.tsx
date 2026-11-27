@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import type { ProjectState } from './types';
 
 const paths: Record<string, ReactNode> = {
@@ -40,12 +40,22 @@ export function StateNode({ state, route }: { state: ProjectState; route?: boole
   );
 }
 
+/** De vier vaste woorden voor de staat van een project. Overal dezelfde. */
 export const STATE_LABEL: Record<ProjectState, string> = {
-  klaar: 'Klaar',
+  beschikbaar: 'Kan nu',
   bezig: 'Bezig',
-  beschikbaar: 'Beschikbaar',
-  op_slot: 'Op slot',
+  op_slot: 'Wacht',
+  klaar: 'Klaar',
 };
+
+export const EFFORT_HINT: Record<string, string> = {
+  S: 'een middag',
+  M: 'een weekend',
+  L: 'een paar weekenden',
+  XL: 'weken, of een vakman',
+};
+
+export const IMPACT_HINT = ['', 'nauwelijks merkbaar', 'klein verschil', 'merkbaar verschil', 'groot verschil', 'merk je elke dag'];
 
 export const STATE_CHIP: Record<ProjectState, string> = {
   klaar: 'green',
@@ -125,4 +135,63 @@ export function parseEuro(s: string): number | undefined {
   if (!clean) return undefined;
   const n = Math.round(Number(clean));
   return Number.isFinite(n) ? n : undefined;
+}
+
+export interface SwipeAction {
+  label: string;
+  onClick: () => void;
+  color?: string;
+}
+
+/** Rij die je naar links veegt om acties te tonen, zoals in Herinneringen en Mail. */
+export function SwipeRow({ children, actions, className = 'row' }: { children: ReactNode; actions: SwipeAction[]; className?: string }) {
+  const width = actions.length * 80;
+  const [x, setX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number; base: number; horizontal?: boolean } | null>(null);
+
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0];
+    start.current = { x: t.clientX, y: t.clientY, base: x };
+  };
+  const onTouchMove = (e: TouchEvent) => {
+    const s = start.current;
+    if (!s) return;
+    const t = e.touches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    if (s.horizontal == null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) s.horizontal = Math.abs(dx) > Math.abs(dy);
+    if (!s.horizontal) return;
+    setDragging(true);
+    setX(Math.max(-width - 30, Math.min(0, s.base + dx)));
+  };
+  const onTouchEnd = () => {
+    setDragging(false);
+    setX((cur) => (cur < -width / 2 ? -width : 0));
+    start.current = null;
+  };
+
+  return (
+    <div className="swipe">
+      <div className="swipe-actions" style={{ width, visibility: x < 0 ? 'visible' : 'hidden' }}>
+        {actions.map((a) => (
+          <button key={a.label} style={{ background: a.color ?? 'var(--red)' }} onClick={() => { setX(0); a.onClick(); }}>{a.label}</button>
+        ))}
+      </div>
+      <div
+        className={`swipe-front ${className}`}
+        style={{ transform: `translateX(${x}px)`, transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClickCapture={(e) => { if (x !== 0) { e.stopPropagation(); e.preventDefault(); setX(0); } }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function formatDate(ts: number) {
+  return new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: new Date(ts).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 }
