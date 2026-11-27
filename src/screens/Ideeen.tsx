@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { addIdea, removeIdea, useData } from '../store';
-import { formatDate, Icon, SwipeRow, toast } from '../ui';
+import { formatDate, Icon, ScreenShell, SwipeRow, toast } from '../ui';
 import type { Nav } from '../App';
 
 export function IdeeenScreen({ nav }: { nav: Nav }) {
@@ -15,10 +15,7 @@ export function IdeeenScreen({ nav }: { nav: Nav }) {
   };
 
   return (
-    <div className="screen fade-in">
-      <div className="navbar"><span /></div>
-      <h1 className="large-title">Ideeën</h1>
-      <p className="subtitle">Snel vastleggen, later uitwerken</p>
+    <ScreenShell title="Ideeën" subtitle="Snel vastleggen, later uitwerken">
 
       <form className="idea-input" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <input className="text-input" placeholder="Nieuw idee…" value={text} onChange={(e) => setText(e.target.value)} enterKeyHint="done" aria-label="Nieuw idee" />
@@ -50,6 +47,6 @@ export function IdeeenScreen({ nav }: { nav: Nav }) {
           <p className="row-sub" style={{ textAlign: 'center', fontSize: 12, margin: 0 }}>Veeg naar links om een idee weg te gooien</p>
         </div>
       )}
-    </div>
+    </ScreenShell>
   );
 }
